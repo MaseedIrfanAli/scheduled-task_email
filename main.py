@@ -1,38 +1,57 @@
-# To run and test the code you need to update 4 places:
-# 1. Change MY_EMAIL/MY_PASSWORD to your own details.
-# 2. Go to your email provider and make it allow less secure apps.
-# 3. Update the SMTP ADDRESS to match your email provider.
-# 4. Update birthdays.csv to contain today's month and day.
-# See the solution video in the 100 Days of Python Course for explainations.
-
-
-from datetime import datetime
-import pandas
-import random
-import smtplib
+import requests
+from twilio.rest import Client
 import os
+# from twilio.http.http_client import TwilioHttpClient
 
-# import os and use it to get the Github repository secrets
-MY_EMAIL = os.environ.get("MY_EMAIL")
-MY_PASSWORD = os.environ.get("MY_PASSWORD")
 
-today = datetime.now()
-today_tuple = (today.month, today.day)
+api_key=os.getenv("API_KEY")
+auth_key=os.getenv("AUTH_TOKEN")
+account_sid = auth_key=os.getenv(
+url="https://api.openweathermap.org/data/2.5/forecast"
+parameters={"lat" : 17.395098,
+            "lon" : 78.383877,
+            "appid" : api_key,
+            "cnt": 4
+        }
 
-data = pandas.read_csv("birthdays.csv")
-birthdays_dict = {(data_row["month"], data_row["day"])                  : data_row for (index, data_row) in data.iterrows()}
-if today_tuple in birthdays_dict:
-    birthday_person = birthdays_dict[today_tuple]
-    file_path = f"letter_templates/letter_{random.randint(1, 3)}.txt"
-    with open(file_path) as letter_file:
-        contents = letter_file.read()
-        contents = contents.replace("[NAME]", birthday_person["name"])
+# https://api.openweathermap.org/data/2.5/weather?lat=17.3951&lon=78.3742&appid=e71a065406c38c442c1cf15d8d96b9e1
 
-    with smtplib.SMTP("YOUR EMAIL PROVIDER SMTP SERVER ADDRESS") as connection:
-        connection.starttls()
-        connection.login(MY_EMAIL, MY_PASSWORD)
-        connection.sendmail(
-            from_addr=MY_EMAIL,
-            to_addrs=birthday_person["email"],
-            msg=f"Subject:Happy Birthday!\n\n{contents}"
-        )
+response = requests.get(url,params=parameters)
+response.raise_for_status()
+weather_data = response.json()
+import datetime
+import pandas as pd
+now = datetime.datetime.now()
+hr=now.hour
+time=now.time()
+print(time, hr)
+# for key,val in weather_data.items():
+#     if key == "list":
+#         for i in range(len(val)):
+#                 print(val[i]["weather"][0]["id"])
+#
+# dict_weather_data = pd.json_normalize(weather_data)
+# for i in range(len(dict_weather_data.list[0])):
+#         if dict_weather_data.list[0][i]["weather"][0]["id"] > 700:
+#             print("Bring an Umbrella")
+will_rain = False
+for hour_data in weather_data["list"]:
+    condition_code = hour_data["weather"][0]['id']
+    if int(condition_code) < 700:
+        will_rain = True
+if will_rain:
+    account_sid = "ACc6735e0a9976acd0bfdf367f16f486b5"
+    auth_token = auth_key
+    client = Client(account_sid, auth_token)
+    message = client.messages\
+         .create(
+            messaging_service_sid= "MG2932519c17503bd36165aeba90c251f1",
+            body="Its going to rain today. Remember to bring an umbrella",
+            to="+918328625700"
+    )
+    print(message.status)
+
+
+
+
+# +18777804236
